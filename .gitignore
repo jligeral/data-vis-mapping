@@ -3,4 +3,5 @@ data/raw/
 
 # misc
 .DS_Store
+.venv
 .idea
