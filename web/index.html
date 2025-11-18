@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Data Viz Galaxy</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top, #050816, #02010a 60%, #000000);
+      color: #eee;
+    }
+    #container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    #infoPanel {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 320px;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 1rem;
+      border-radius: 12px;
+      background: rgba(5, 5, 20, 0.9);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      pointer-events: auto;
+    }
+    #infoPanel h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+    }
+    #infoPanel p {
+      margin: 0.25rem 0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    #infoPanel .label {
+      font-weight: 600;
+      opacity: 0.8;
+    }
+    #infoPanel a {
+      color: #7ad7ff;
+      text-decoration: none;
+    }
+    #infoPanel a:hover {
+      text-decoration: underline;
+    }
+    #infoPanel.empty {
+      opacity: 0.6;
+      font-style: italic;
+    }
+
+    #timeline {
+      position: absolute;
+      left: 50%;
+      bottom: 1.5rem;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(5, 5, 20, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+      font-size: 0.8rem;
+    }
+    #yearLabel {
+      min-width: 4ch;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    #yearSlider {
+      width: 260px;
+    }
+    #playButton {
+      border: none;
+      border-radius: 999px;
+      padding: 0.2rem 0.8rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      background: #4e6bff;
+      color: white;
+    }
+    #playButton.paused {
+      background: #3b3b48;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="infoPanel" class="empty">
+      <h2>Click a topic to inspect</h2>
+      <p>Rotate with mouse, scroll to zoom. Drag to explore the galaxy. Use the slider below to animate over publication year.</p>
+    </div>
+
+    <div id="timeline">
+      <button id="playButton" class="paused">▶</button>
+      <span class="label">Year:</span>
+      <span id="yearLabel">…</span>
+      <input id="yearSlider" type="range" min="2000" max="2025" value="2000" />
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

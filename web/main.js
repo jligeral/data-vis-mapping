@@ -1,0 +1,325 @@
+import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js';
+
+const container = document.getElementById('container');
+const infoPanel = document.getElementById('infoPanel');
+const yearSlider = document.getElementById('yearSlider');
+const yearLabel = document.getElementById('yearLabel');
+const playButton = document.getElementById('playButton');
+
+let scene, camera, renderer, controls;
+let raycaster, mouse;
+let instancedMesh;
+let topics = [];
+let clusters = [];
+let clusterColors = {};
+let minYear = 2000;
+let maxYear = 2025;
+let currentYear = 2000;
+let playing = false;
+
+// To store per-instance metadata for click handling
+const instanceIdToTopic = new Map();
+
+init();
+loadData().then(start);
+
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x02010a, 0.05);
+
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
+  camera.position.set(0, 0, 40);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  container.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.rotateSpeed = 0.6;
+  controls.zoomSpeed = 0.7;
+  controls.minDistance = 5;
+  controls.maxDistance = 200;
+
+  // Lighting
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambient);
+
+  const mainLight = new THREE.PointLight(0xffffff, 2, 0, 2);
+  mainLight.position.set(20, 30, 20);
+  scene.add(mainLight);
+
+  // Starfield background
+  addStarfield();
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  window.addEventListener('resize', onWindowResize);
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+  yearSlider.addEventListener('input', onYearSliderChange);
+  playButton.addEventListener('click', togglePlay);
+}
+
+async function loadData() {
+  const resp = await fetch('./data/topics_3d.json');
+  const json = await resp.json();
+
+  topics = json;
+
+  // Determine year bounds
+  const years = topics
+    .map(d => Number(d.publication_year))
+    .filter(y => !Number.isNaN(y));
+
+  minYear = Math.min(...years);
+  maxYear = Math.max(...years);
+  currentYear = minYear;
+
+  yearSlider.min = String(minYear);
+  yearSlider.max = String(maxYear);
+  yearSlider.value = String(currentYear);
+  yearLabel.textContent = currentYear;
+
+  // Collect cluster ids
+  clusters = Array.from(new Set(topics.map(d => d.cluster))).sort((a, b) => a - b);
+
+  // Assign colors to clusters
+  const palette = [
+    0xff6b6b, // red
+    0xffc15e, // orange
+    0x6bffb0, // mint
+    0x6bb8ff, // blue
+    0xd06bff, // purple
+    0xff8bd5, // pink
+    0xa0ff6b, // green
+    0xffe66b  // yellow
+  ];
+
+  clusters.forEach((clusterId, index) => {
+    const color = palette[index % palette.length];
+    clusterColors[clusterId] = new THREE.Color(color);
+  });
+}
+
+function start() {
+  createGalaxy();
+  animate();
+}
+
+function createGalaxy() {
+  const count = topics.length;
+
+  // Geometry + material for instances
+  const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+  const material = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    emissive: 0x000000,
+    shininess: 50
+  });
+
+  instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+  const dummy = new THREE.Object3D();
+
+  topics.forEach((topic, index) => {
+    // Normalize coordinates a bit so the galaxy is compact
+    const scaleFactor = 10; // adjust this if your space is too spread out
+    const x = topic.x * scaleFactor;
+    const y = topic.y * scaleFactor;
+    const z = topic.z * scaleFactor;
+
+    dummy.position.set(x, y, z);
+
+    // scale small by default; we’ll fade in by year in update
+    dummy.scale.setScalar(0.001);
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(index, dummy.matrix);
+
+    // Set color attribute per instance via color buffer
+    const clusterColor = clusterColors[topic.cluster] || new THREE.Color(0xffffff);
+    instancedMesh.setColorAt(index, clusterColor);
+
+    instanceIdToTopic.set(index, topic);
+  });
+
+  instancedMesh.instanceColor.needsUpdate = true;
+  scene.add(instancedMesh);
+}
+
+function addStarfield() {
+  const starGeometry = new THREE.BufferGeometry();
+  const starCount = 2000;
+  const positions = new Float32Array(starCount * 3);
+
+  for (let i = 0; i < starCount * 3; i += 3) {
+    const radius = 200 * Math.random() + 50;
+    const theta = 2 * Math.PI * Math.random();
+    const phi = Math.acos(2 * Math.random() - 1);
+    positions[i] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i + 1] = radius * Math.sin(phi) * Math.sin(theta);
+    positions[i + 2] = radius * Math.cos(phi);
+  }
+
+  starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const starMaterial = new THREE.PointsMaterial({
+    size: 0.8,
+    sizeAttenuation: true,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.7
+  });
+
+  const stars = new THREE.Points(starGeometry, starMaterial);
+  scene.add(stars);
+}
+
+function onWindowResize() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+function onPointerDown(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObject(instancedMesh);
+
+  if (intersects.length > 0) {
+    const instanceId = intersects[0].instanceId;
+    if (instanceId !== undefined && instanceIdToTopic.has(instanceId)) {
+      const topic = instanceIdToTopic.get(instanceId);
+      highlightInstance(instanceId);
+      showInfo(topic);
+    }
+  }
+}
+
+let highlightedInstance = null;
+
+function highlightInstance(instanceId) {
+  const dummy = new THREE.Object3D();
+
+  if (highlightedInstance !== null && highlightedInstance !== instanceId) {
+    // reset previous highlight scale
+    const oldTopic = instanceIdToTopic.get(highlightedInstance);
+    setInstanceScaleByYear(highlightedInstance, oldTopic);
+  }
+
+  highlightedInstance = instanceId;
+
+  instancedMesh.getMatrixAt(instanceId, dummy.matrix);
+  dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+  // bump the scale up and emissive glow
+  dummy.scale.multiplyScalar(1.8);
+  dummy.updateMatrix();
+  instancedMesh.setMatrixAt(instanceId, dummy.matrix);
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  // update material emissive via vertex colors (approximate "glow")
+  // we could also temporarily tint its color brighter, but for simplicity just leave color as is.
+}
+
+function showInfo(topic) {
+  infoPanel.classList.remove('empty');
+  const authors = (topic.authorships || []).join(', ');
+  const keywords = (topic.concepts || topic.topics || []).join(', ');
+
+  infoPanel.innerHTML = `
+    <h2>${topic.title || 'Untitled'}</h2>
+    <p><span class="label">Year:</span> ${topic.publication_year ?? 'Unknown'}</p>
+    <p><span class="label">Host Organization:</span> ${topic.host_organization || 'Unknown'}</p>
+    <p><span class="label">Cluster:</span> ${topic.cluster}</p>
+    <p><span class="label">Authors:</span> ${authors || 'Unknown'}</p>
+    <p><span class="label">Keywords:</span> ${keywords || '—'}</p>
+    <p><span class="label">Citations:</span> ${topic.cited_by_count ?? '—'}</p>
+  `;
+
+  // If you later have URLs (e.g., topic.openalex_id or doi), you can add links here.
+}
+
+function onYearSliderChange(e) {
+  currentYear = Number(e.target.value);
+  yearLabel.textContent = currentYear;
+  updateInstanceScales();
+}
+
+function togglePlay() {
+  playing = !playing;
+  playButton.classList.toggle('paused', !playing);
+  playButton.textContent = playing ? '⏸' : '▶';
+}
+
+function updateInstanceScales() {
+  if (!instancedMesh) return;
+  const dummy = new THREE.Object3D();
+
+  topics.forEach((topic, index) => {
+    const year = Number(topic.publication_year);
+    instancedMesh.getMatrixAt(index, dummy.matrix);
+    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+    setInstanceScaleByYear(index, topic, dummy);
+
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(index, dummy.matrix);
+  });
+
+  instancedMesh.instanceMatrix.needsUpdate = true;
+}
+
+function setInstanceScaleByYear(index, topic, dummyObj) {
+  const year = Number(topic.publication_year);
+  const visible = !Number.isNaN(year) && year <= currentYear;
+
+  const baseScale = 0.35;
+  const minScale = 0.02;
+
+  const t = visible ? 1.0 : 0.0;
+  const s = minScale + t * (baseScale - minScale);
+
+  if (dummyObj) {
+    dummyObj.scale.setScalar(s);
+  } else {
+    const dummy = new THREE.Object3D();
+    instancedMesh.getMatrixAt(index, dummy.matrix);
+    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+    dummy.scale.setScalar(s);
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(index, dummy.matrix);
+  }
+}
+
+function animate(time) {
+  requestAnimationFrame(animate);
+
+  if (playing) {
+    const speed = 0.02; // years per frame-ish
+    currentYear += speed;
+    if (currentYear > maxYear + 0.99) {
+      currentYear = minYear;
+    }
+    yearSlider.value = String(Math.round(currentYear));
+    yearLabel.textContent = Math.round(currentYear);
+    updateInstanceScales();
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
