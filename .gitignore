@@ -2,6 +2,10 @@
 data/raw/
 data/interim/
 
+# Dependencies
+
+/node_modules
+
 # misc
 .DS_Store
 .venv

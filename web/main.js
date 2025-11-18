@@ -1,5 +1,5 @@
-import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const container = document.getElementById('container');
 const infoPanel = document.getElementById('infoPanel');
@@ -31,13 +31,13 @@ function init() {
   const width = window.innerWidth;
   const height = window.innerHeight;
 
-  camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
-  camera.position.set(0, 0, 40);
+  camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
+  camera.position.set(0, 0, 60);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(width, height);
   renderer.setPixelRatio(window.devicePixelRatio || 1);
-  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.outputColorSpace;
   container.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -59,6 +59,9 @@ function init() {
   // Starfield background
   addStarfield();
 
+  // Remove comment below to test if lighting is fine
+  // addDebugCube();
+
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
 
@@ -70,8 +73,12 @@ function init() {
 }
 
 async function loadData() {
+  console.log('Loading data…'); // Check if data loads
   const resp = await fetch('./data/topics_3d.json');
+  console.log('Fetch status:', resp.status);
   const json = await resp.json();
+  console.log('Got topics:', json.length);
+  console.log('First topic:', json[0]);
 
   topics = json;
 
@@ -79,6 +86,8 @@ async function loadData() {
   const years = topics
     .map(d => Number(d.publication_year))
     .filter(y => !Number.isNaN(y));
+
+  console.log('Year sample:', years.slice(0, 10));
 
   minYear = Math.min(...years);
   maxYear = Math.max(...years);
@@ -119,11 +128,12 @@ function createGalaxy() {
   const count = topics.length;
 
   // Geometry + material for instances
-  const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+  const geometry = new THREE.SphereGeometry(0.35, 16, 16);
   const material = new THREE.MeshPhongMaterial({
     color: 0xffffff,
     emissive: 0x000000,
-    shininess: 50
+    shininess: 50,
+    vertexColors: true,
   });
 
   instancedMesh = new THREE.InstancedMesh(geometry, material, count);
@@ -133,15 +143,15 @@ function createGalaxy() {
 
   topics.forEach((topic, index) => {
     // Normalize coordinates a bit so the galaxy is compact
-    const scaleFactor = 10; // adjust this if your space is too spread out
-    const x = topic.x * scaleFactor;
-    const y = topic.y * scaleFactor;
-    const z = topic.z * scaleFactor;
+    const scaleFactor = 1.5; // adjust this if your space is too spread out
+    const x = Number(topic.x) * scaleFactor;
+    const y = Number(topic.y) * scaleFactor;
+    const z = Number(topic.z) * scaleFactor;
 
     dummy.position.set(x, y, z);
 
     // scale small by default; we’ll fade in by year in update
-    dummy.scale.setScalar(0.001);
+    dummy.scale.setScalar(0.35);
     dummy.updateMatrix();
     instancedMesh.setMatrixAt(index, dummy.matrix);
 
@@ -152,7 +162,10 @@ function createGalaxy() {
     instanceIdToTopic.set(index, topic);
   });
 
-  instancedMesh.instanceColor.needsUpdate = true;
+  instancedMesh.instanceMatrix.needsUpdate = true;
+  if (instancedMesh.instanceColor) {
+    instancedMesh.instanceColor.needsUpdate = true;
+  }
   scene.add(instancedMesh);
 }
 
