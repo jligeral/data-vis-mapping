@@ -1,5 +1,6 @@
 # Data
 data/raw/
+data/interim/
 
 # misc
 .DS_Store
