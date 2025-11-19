@@ -295,15 +295,12 @@ function highlightInstance(instanceId) {
   // we could also temporarily tint its color brighter, but for simplicity just leave color as is.
 }
 
-let highlightedCluster = null;
-
 function resetClusterHighlight() {
   console.log("Color reset")
   for (let i = 0; i < topics.length; i++) {
     instancedMesh.setColorAt(i, clusterColors[topics[i].cluster]);
   }
   instancedMesh.instanceColor.needsUpdate = true;
-  highlightedCluster = null;
 }
 
 function highlightCluster(instanceId) {
@@ -311,21 +308,16 @@ function highlightCluster(instanceId) {
   const dimColor = new THREE.Color(0xffffff);
   const clusterId = topics[instanceId].cluster;
 
-  if (highlightedCluster === clusterId){
-    resetClusterHighlight()
-  } else {
-    for (let i = 0; i < topics.length; i++) {
-      if (topics[i].cluster === clusterId) {
-        // Restore original
-        instancedMesh.setColorAt(i, clusterColors[topics[i].cluster]);
-        highlightedCluster = topics[i].cluster
-      } else {
-        // Dim others
-        instancedMesh.setColorAt(i, dimColor);
-      }
+  for (let i = 0; i < topics.length; i++) {
+    if (topics[i].cluster === clusterId) {
+      // Restore original
+      instancedMesh.setColorAt(i, clusterColors[topics[i].cluster]);
+    } else {
+      // Dim others
+      instancedMesh.setColorAt(i, dimColor);
     }
-    instancedMesh.instanceColor.needsUpdate = true;
   }
+  instancedMesh.instanceColor.needsUpdate = true;
 }
 
 function showInfo(topic) {
