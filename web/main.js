@@ -6,6 +6,7 @@ const infoPanel = document.getElementById('infoPanel');
 const yearSlider = document.getElementById('yearSlider');
 const yearLabel = document.getElementById('yearLabel');
 const playButton = document.getElementById('playButton');
+const outlierButton = document.getElementById("outlierButton");
 
 let scene, camera, renderer, controls;
 let raycaster, mouse;
@@ -17,6 +18,7 @@ let minYear = 2000;
 let maxYear = 2025;
 let currentYear = 2000;
 let playing = false;
+let outliersVisible = true;
 
 // To store per-instance metadata for click handling
 const instanceIdToTopic = new Map();
@@ -26,13 +28,13 @@ loadData().then(start);
 
 function init() {
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x02010a, 0.05);
+  scene.fog = new THREE.FogExp2(0x02010a, 0.008);
 
   const width = window.innerWidth;
   const height = window.innerHeight;
 
   camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
-  camera.position.set(0, 0, 60);
+  camera.position.set(120, 120, 60);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(width, height);
@@ -48,9 +50,15 @@ function init() {
   controls.minDistance = 5;
   controls.maxDistance = 200;
 
+  controls.target.set(105, 110, -11);
+  controls.update();
+
   // Lighting
-  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.7);
   scene.add(ambient);
+  
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+  scene.add(hemi);
 
   const mainLight = new THREE.PointLight(0xffffff, 2, 0, 2);
   mainLight.position.set(20, 30, 20);
@@ -70,6 +78,7 @@ function init() {
 
   yearSlider.addEventListener('input', onYearSliderChange);
   playButton.addEventListener('click', togglePlay);
+  outlierButton.addEventListener("click", toggleOutlierButton);
 }
 
 async function loadData() {
@@ -89,7 +98,8 @@ async function loadData() {
 
   console.log('Year sample:', years.slice(0, 10));
 
-  minYear = Math.min(...years);
+  // minYear = Math.min(...years);
+  minYear = 1980;
   maxYear = Math.max(...years);
   currentYear = minYear;
 
@@ -117,6 +127,9 @@ async function loadData() {
     const color = palette[index % palette.length];
     clusterColors[clusterId] = new THREE.Color(color);
   });
+
+  // Grey color for the -1 cluster
+  clusterColors[-1] = new THREE.Color(0x888888)
 }
 
 function start() {
@@ -130,10 +143,8 @@ function createGalaxy() {
   // Geometry + material for instances
   const geometry = new THREE.SphereGeometry(0.35, 16, 16);
   const material = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
     emissive: 0x000000,
     shininess: 50,
-    vertexColors: true,
   });
 
   instancedMesh = new THREE.InstancedMesh(geometry, material, count);
@@ -143,7 +154,7 @@ function createGalaxy() {
 
   topics.forEach((topic, index) => {
     // Normalize coordinates a bit so the galaxy is compact
-    const scaleFactor = 1.5; // adjust this if your space is too spread out
+    const scaleFactor = 10; // adjust this if your space is too spread out
     const x = Number(topic.x) * scaleFactor;
     const y = Number(topic.y) * scaleFactor;
     const z = Number(topic.z) * scaleFactor;
@@ -251,12 +262,12 @@ function highlightInstance(instanceId) {
 
 function showInfo(topic) {
   infoPanel.classList.remove('empty');
-  const authors = (topic.authorships || []).join(', ');
-  const keywords = (topic.concepts || topic.topics || []).join(', ');
+  const authors = (topic.authorships || []).split("|").join(", ");
+  const keywords = (topic.concepts || topic.topics || []).split("|").join(", ");
 
   infoPanel.innerHTML = `
     <h2>${topic.title || 'Untitled'}</h2>
-    <p><span class="label">Year:</span> ${topic.publication_year ?? 'Unknown'}</p>
+    <p><span class="label">Year:</span> ${parseInt(topic.publication_year) ?? 'Unknown'}</p>
     <p><span class="label">Host Organization:</span> ${topic.host_organization || 'Unknown'}</p>
     <p><span class="label">Cluster:</span> ${topic.cluster}</p>
     <p><span class="label">Authors:</span> ${authors || 'Unknown'}</p>
@@ -278,6 +289,24 @@ function togglePlay() {
   playButton.classList.toggle('paused', !playing);
   playButton.textContent = playing ? '⏸' : '▶';
 }
+
+function toggleOutlierButton() {
+  outliersVisible = !outliersVisible;
+  const dummy = new THREE.Object3D();
+
+  topics.forEach((topic, index) => {
+    if (topic.cluster === -1) {
+      instancedMesh.getMatrixAt(index, dummy.matrix);
+      dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+      dummy.scale.setScalar(outliersVisible ? 0.35 : 0.00001);
+      dummy.updateMatrix();
+      instancedMesh.setMatrixAt(index, dummy.matrix);
+    }
+  });
+
+  instancedMesh.instanceMatrix.needsUpdate = true;
+  outlierButton.classList.toggle("active", !outliersVisible);
+};
 
 function updateInstanceScales() {
   if (!instancedMesh) return;
@@ -323,7 +352,7 @@ function animate(time) {
   requestAnimationFrame(animate);
 
   if (playing) {
-    const speed = 0.02; // years per frame-ish
+    const speed = 0.04; // years per frame-ish
     currentYear += speed;
     if (currentYear > maxYear + 0.99) {
       currentYear = minYear;
