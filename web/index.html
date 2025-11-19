@@ -94,6 +94,52 @@
     #playButton.paused {
       background: #3b3b48;
     }
+    #Filters {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: rgba(5, 5, 20, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+
+      font-size: 0.8rem;
+      pointer-events: auto;
+    }
+
+    #Filters button {
+      padding: 0.45rem 0.8rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #eee;
+
+      background: linear-gradient(135deg, #444, #2a2a36);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+
+      transition: all 0.2s ease;
+    }
+
+    #Filters button:hover {
+      background: linear-gradient(135deg, #5a5a6b, #3a3a48);
+      color: #fff;
+    }
+
+    #Filters button.active {
+      background: #ff3b30;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 59, 48, 0.6);
+      border-color: rgba(255, 59, 48, 0.4);
+    }
   </style>
   <script type="importmap">
 {
@@ -117,6 +163,11 @@
       <span id="yearLabel">…</span>
       <input id="yearSlider" type="range" min="2000" max="2025" value="2000" />
     </div>
+
+    <div id="Filters">
+      <button id="outlierButton">Outlier cluster</button>
+    </div>
+
   </div>
 
   <script type="module" src="./main.js"></script>
