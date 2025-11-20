@@ -7,6 +7,8 @@ const yearSlider = document.getElementById('yearSlider');
 const yearLabel = document.getElementById('yearLabel');
 const playButton = document.getElementById('playButton');
 const outlierButton = document.getElementById("outlierButton");
+const resetColorButton = document.getElementById("resetColorsButton");
+const resetCameraButton = document.getElementById("resetCameraButton");
 
 let scene, camera, renderer, controls;
 let raycaster, mouse;
@@ -19,6 +21,9 @@ let maxYear = 2025;
 let currentYear = 2000;
 let playing = false;
 let outliersVisible = true;
+let pointerDown = false;
+let startX = 0;
+let startY = 0;
 
 // To store per-instance metadata for click handling
 const instanceIdToTopic = new Map();
@@ -74,10 +79,36 @@ function init() {
   mouse = new THREE.Vector2();
 
   window.addEventListener('resize', onWindowResize);
-  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+  // Movement threshold for listener
+  const CLICK_THRESHOLD = 5;
+
+  renderer.domElement.addEventListener('pointerdown', (event) => {
+    pointerDown = true;
+    startX = event.clientX;
+    startY = event.clientY;
+  });
+
+  renderer.domElement.addEventListener("pointerup", (event) => {
+    if (!pointerDown) return;
+    pointerDown = false;
+
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+
+    const distance = Math.sqrt(dx*dx + dy*dy);
+
+    // If mouse moved too much, treat as drag, not click
+    if (distance > CLICK_THRESHOLD) return;
+
+    // Otherwise it's a click, call click
+    onPointerClick(event);
+  });
 
   yearSlider.addEventListener('input', onYearSliderChange);
   playButton.addEventListener('click', togglePlay);
+  resetCameraButton.addEventListener('click', toggleResetCamera)
+  resetColorButton.addEventListener('click', toggleResetColorButton)
   outlierButton.addEventListener("click", toggleOutlierButton);
 }
 
@@ -216,7 +247,7 @@ function onWindowResize() {
   renderer.setSize(width, height);
 }
 
-function onPointerDown(event) {
+function onPointerClick(event) {
   const rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -228,7 +259,11 @@ function onPointerDown(event) {
     const instanceId = intersects[0].instanceId;
     if (instanceId !== undefined && instanceIdToTopic.has(instanceId)) {
       const topic = instanceIdToTopic.get(instanceId);
-      highlightInstance(instanceId);
+
+      // Replace highliting instance on highlighting cluster, later can figure out how to use it
+      // highlightInstance(instanceId);
+
+      highlightCluster(instanceId);
       showInfo(topic);
     }
   }
@@ -260,6 +295,31 @@ function highlightInstance(instanceId) {
   // we could also temporarily tint its color brighter, but for simplicity just leave color as is.
 }
 
+function resetClusterHighlight() {
+  console.log("Color reset")
+  for (let i = 0; i < topics.length; i++) {
+    instancedMesh.setColorAt(i, clusterColors[topics[i].cluster]);
+  }
+  instancedMesh.instanceColor.needsUpdate = true;
+}
+
+function highlightCluster(instanceId) {
+  //Color for unfocused clusters
+  const dimColor = new THREE.Color(0xffffff);
+  const clusterId = topics[instanceId].cluster;
+
+  for (let i = 0; i < topics.length; i++) {
+    if (topics[i].cluster === clusterId) {
+      // Restore original
+      instancedMesh.setColorAt(i, clusterColors[topics[i].cluster]);
+    } else {
+      // Dim others
+      instancedMesh.setColorAt(i, dimColor);
+    }
+  }
+  instancedMesh.instanceColor.needsUpdate = true;
+}
+
 function showInfo(topic) {
   infoPanel.classList.remove('empty');
   const authors = (topic.authorships || []).split("|").join(", ");
@@ -288,6 +348,14 @@ function togglePlay() {
   playing = !playing;
   playButton.classList.toggle('paused', !playing);
   playButton.textContent = playing ? '⏸' : '▶';
+}
+
+function toggleResetCamera() {
+  camera.position.set(120, 120, 60);
+}
+
+function toggleResetColorButton() {
+  resetClusterHighlight()
 }
 
 function toggleOutlierButton() {
