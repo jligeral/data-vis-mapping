@@ -20,7 +20,7 @@
     }
     #infoPanel {
       position: absolute;
-      top: 1rem;
+      top: 3rem;
       right: 1rem;
       width: 320px;
       max-height: 60vh;
@@ -94,7 +94,7 @@
     #playButton.paused {
       background: #3b3b48;
     }
-    #Filters {
+    #filters {
       position: absolute;
       top: 1rem;
       left: 1rem;
@@ -113,7 +113,7 @@
       pointer-events: auto;
     }
 
-    #Filters button {
+    #filters button {
       padding: 0.45rem 0.8rem;
       border-radius: 8px;
       border: none;
@@ -129,16 +129,60 @@
       transition: all 0.2s ease;
     }
 
-    #Filters button:hover {
+    #filters button:hover {
       background: linear-gradient(135deg, #5a5a6b, #3a3a48);
       color: #fff;
     }
 
-    #Filters button.active {
+    #filters button.active {
       background: #ff3b30;
       color: #fff;
       box-shadow: 0 0 12px rgba(255, 59, 48, 0.6);
       border-color: rgba(255, 59, 48, 0.4);
+    }
+
+    #publicationList {
+      position: absolute;
+      top: 10rem;
+      left: 1rem;
+      width: 280px;            
+      max-height: 360px;  
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: rgba(5, 5, 20, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+      font-size: 0.8rem;
+      pointer-events: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #555 #1a1a2a;
+  }
+
+    #infoResetButton {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    #infoResetButton:hover {
+      background: rgba(255, 255, 255, 0.4);
     }
   </style>
   <script type="importmap">
@@ -152,9 +196,15 @@
 </head>
 <body>
   <div id="container">
+    <button id="infoResetButton">i</button>
+
     <div id="infoPanel" class="empty">
       <h2>Click a topic to inspect</h2>
       <p>Rotate with mouse, scroll to zoom. Drag to explore the galaxy. Use the slider below to animate over publication year.</p>
+      <h2>About data/project</h2>
+      <p>Text about data/project</p>
+      <h2>About us</h2>
+      <p>Text about us</p>
     </div>
 
     <div id="timeline">
@@ -164,12 +214,13 @@
       <input id="yearSlider" type="range" min="2000" max="2025" value="2000" />
     </div>
 
-    <div id="Filters">
+    <div id="filters">
       <button id="resetCameraButton">Reset camera</button>
       <button id="resetColorsButton">Reset colors</button>
       <button id="outlierButton">Outlier cluster</button>
     </div>
 
+    <div id="publicationList"></div>
   </div>
 
   <script type="module" src="./main.js"></script>
