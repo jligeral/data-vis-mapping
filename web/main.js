@@ -9,6 +9,11 @@ const playButton = document.getElementById('playButton');
 const outlierButton = document.getElementById("outlierButton");
 const resetColorButton = document.getElementById("resetColorsButton");
 const resetCameraButton = document.getElementById("resetCameraButton");
+const list = document.getElementById("publicationList");
+const infoResetButton = document.getElementById('infoResetButton');
+
+// Save initial info
+const initialInfo = infoPanel.innerHTML;
 
 let scene, camera, renderer, controls;
 let raycaster, mouse;
@@ -16,9 +21,9 @@ let instancedMesh;
 let topics = [];
 let clusters = [];
 let clusterColors = {};
-let minYear = 2000;
-let maxYear = 2025;
-let currentYear = 2000;
+let minYear;
+let maxYear;
+let currentYear;
 let playing = false;
 let outliersVisible = true;
 let pointerDown = false;
@@ -107,9 +112,10 @@ function init() {
 
   yearSlider.addEventListener('input', onYearSliderChange);
   playButton.addEventListener('click', togglePlay);
-  resetCameraButton.addEventListener('click', toggleResetCamera)
-  resetColorButton.addEventListener('click', toggleResetColorButton)
+  resetCameraButton.addEventListener('click', toggleResetCamera);
+  resetColorButton.addEventListener('click', toggleResetColorButton);
   outlierButton.addEventListener("click", toggleOutlierButton);
+  infoResetButton.addEventListener('click', toggleInfoResetButton);
 }
 
 async function loadData() {
@@ -129,10 +135,9 @@ async function loadData() {
 
   console.log('Year sample:', years.slice(0, 10));
 
-  // minYear = Math.min(...years);
   minYear = 1980;
   maxYear = Math.max(...years);
-  currentYear = minYear;
+  currentYear = maxYear;
 
   yearSlider.min = String(minYear);
   yearSlider.max = String(maxYear);
@@ -262,7 +267,7 @@ function onPointerClick(event) {
 
       // Replace highliting instance on highlighting cluster, later can figure out how to use it
       // highlightInstance(instanceId);
-
+      updatePublicationList(instanceId)
       highlightCluster(instanceId);
       showInfo(topic);
     }
@@ -416,13 +421,41 @@ function setInstanceScaleByYear(index, topic, dummyObj) {
   }
 }
 
+function updatePublicationList(instanceId) {
+  const clusterId = topics[instanceId].cluster;
+  const pubs = topics.filter(t => t.cluster === clusterId);
+
+  list.innerHTML = `
+    <div><strong>Cluster: </strong><span style="opacity: 0.7;">${clusterId}</span></div>
+    <div><strong> Number of publications: </strong><span style="opacity: 0.7;">${pubs.length}</span></div>
+  `;
+
+  pubs.forEach(pub => {
+    const item = document.createElement("p");
+    item.innerHTML = `<strong>${pub.title}</strong><br>
+    <span style="opacity: 0.7;">${parseInt(pub.publication_year) || 'Unknown'}</span>`;
+
+    item.style.cursor = "pointer";
+      item.addEventListener("click", () => {
+      showInfo(pub);
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function toggleInfoResetButton() {
+  infoPanel.classList.add('empty');
+  infoPanel.innerHTML = initialInfo;
+}
+
 function animate(time) {
   requestAnimationFrame(animate);
 
   if (playing) {
     const speed = 0.04; // years per frame-ish
     currentYear += speed;
-    if (currentYear > maxYear + 0.99) {
+    if (currentYear > maxYear) {
       currentYear = minYear;
     }
     yearSlider.value = String(Math.round(currentYear));
