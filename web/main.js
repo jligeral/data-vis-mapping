@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { aboutContent } from './aboutContent.js';
 
 const container = document.getElementById('container');
 const infoPanel = document.getElementById('infoPanel');
@@ -116,6 +117,63 @@ function init() {
   resetColorButton.addEventListener('click', toggleResetColorButton);
   outlierButton.addEventListener("click", toggleOutlierButton);
   infoResetButton.addEventListener('click', toggleInfoResetButton);
+
+  // Update the "i" button to use the letter "i" instead of the emoji and ensure it is on top of the panel
+  const infoButton = document.getElementById('infoResetButton');
+  infoButton.textContent = 'i'; // Use the letter "i"
+  infoButton.style.backgroundColor = '#fff'; // White circle
+  infoButton.style.color = '#808080'; // Grey "i"
+  infoButton.style.cursor = 'pointer';
+  infoButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.3)';
+  infoButton.style.zIndex = '1001'; // Ensure it is above the panel
+
+  infoButton.addEventListener('click', () => {
+    const isPanelOpen = infoPanelOverlay.style.display === 'flex';
+
+    if (isPanelOpen) {
+      infoPanelOverlay.style.transformOrigin = 'top right'; // Adjust origin for top-right animation
+      infoPanelOverlay.style.transform = 'scale(0)';
+      infoPanelOverlay.style.opacity = '0';
+      setTimeout(() => {
+        infoPanelOverlay.style.display = 'none';
+      }, 300);
+    } else {
+      infoPanelOverlay.style.display = 'flex';
+      infoPanelOverlay.style.transformOrigin = 'top right'; // Adjust origin for top-right animation
+      setTimeout(() => {
+        infoPanelOverlay.style.transform = 'scale(1)';
+        infoPanelOverlay.style.opacity = '1';
+      }, 10);
+    }
+  });
+
+  const infoPanelOverlay = document.createElement('div');
+  infoPanelOverlay.id = 'infoPanelOverlay';
+  infoPanelOverlay.style.position = 'fixed';
+  infoPanelOverlay.style.top = '0';
+  infoPanelOverlay.style.left = '0';
+  infoPanelOverlay.style.width = '100%';
+  infoPanelOverlay.style.height = '100%';
+  infoPanelOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  infoPanelOverlay.style.color = '#fff';
+  infoPanelOverlay.style.display = 'none';
+  infoPanelOverlay.style.flexDirection = 'column';
+  infoPanelOverlay.style.justifyContent = 'center';
+  infoPanelOverlay.style.alignItems = 'center';
+  infoPanelOverlay.style.overflowY = 'auto';
+  infoPanelOverlay.style.zIndex = '999';
+  infoPanelOverlay.style.transition = 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out';
+  infoPanelOverlay.style.transform = 'scale(0)';
+  infoPanelOverlay.style.opacity = '0';
+
+  document.body.appendChild(infoPanelOverlay);
+
+  const infoContent = document.createElement('div');
+  infoContent.style.maxWidth = '800px';
+  infoContent.style.padding = '20px';
+  infoContent.style.textAlign = 'center';
+  infoContent.innerHTML = aboutContent;
+  infoPanelOverlay.appendChild(infoContent);
 }
 
 async function loadData() {
