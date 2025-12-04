@@ -29,6 +29,7 @@ let outliersVisible = true;
 let pointerDown = false;
 let startX = 0;
 let startY = 0;
+let maxCitations = 1;
 
 // To store per-instance metadata for click handling
 const instanceIdToTopic = new Map();
@@ -128,6 +129,14 @@ async function loadData() {
 
   topics = json;
 
+  maxCitations = topics.reduce((max, t) => {
+    const c = Number(t.cited_by_count) || 0;
+    return c > max ? c : max;
+  }, 1);
+
+  console.log('Max citations:', maxCitations);
+
+
   // Determine year bounds
   const years = topics
     .map(d => Number(d.publication_year))
@@ -170,6 +179,7 @@ async function loadData() {
 
 function start() {
   createGalaxy();
+  updateInstanceScales();
   animate();
 }
 
@@ -195,7 +205,13 @@ function createGalaxy() {
     const y = Number(topic.y) * scaleFactor;
     const z = Number(topic.z) * scaleFactor;
 
-    dummy.position.set(x, y, z);
+    const jitter = 0.7; // Adjust this value to modify separation of topics in space
+
+    dummy.position.set(
+      Number(topic.x) * scaleFactor + (Math.random() - 0.5) * jitter,
+      Number(topic.y) * scaleFactor + (Math.random() - 0.5) * jitter,
+      Number(topic.z) * scaleFactor + (Math.random() - 0.5) * jitter
+    );
 
     // scale small by default; we’ll fade in by year in update
     dummy.scale.setScalar(0.35);
@@ -401,14 +417,33 @@ function updateInstanceScales() {
 
 function setInstanceScaleByYear(index, topic, dummyObj) {
   const year = Number(topic.publication_year);
-  const visible = !Number.isNaN(year) && year <= currentYear;
+  const hasYear = !Number.isNaN(year);
+  const visibleByYear =
+    hasYear &&
+    year >= minYear &&
+    year <= currentYear;
 
-  const baseScale = 0.35;
+  // Base min/max sphere sizes
   const minScale = 0.02;
+  const baseScale = 0.5;
 
-  const t = visible ? 1.0 : 0.0;
-  const s = minScale + t * (baseScale - minScale);
+  // Citation-based factor: squashed with log so it doesn’t explode
+  const rawCites = Math.max(0, Number(topic.cited_by_count) || 0);
+  const logCites = Math.log10(rawCites + 1);
+  const logMax = Math.log10(maxCitations + 1);
 
+// citationFactor in [0.5, 1.2] roughly
+  const citationFactor = 0.2 + 0.9 * (logCites / (logMax || 1));
+
+  // Combine visibility + citations
+  let s = visibleByYear ? baseScale * citationFactor : minScale;
+
+  // Optional: hide outliers when toggle is off
+  if (!outliersVisible && topic.cluster === -1) {
+    s = 0.00001;
+  }
+
+  // Apply to the instance
   if (dummyObj) {
     dummyObj.scale.setScalar(s);
   } else {
