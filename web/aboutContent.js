@@ -20,7 +20,7 @@ export const aboutContent = `
   <br/>
   <h2>FAQ</h2>
   <h4><strong>What is this data about?</strong></h4>
-  <p>This is an interactive map of academic research in the field of information visualization. It allows you to explore nearly X papers from major conferences (like IEEE VIS, CHI, EuroVis) by the semantic similarity of their ideas as revealed through their titles and abstracts.</p>
+  <p>This is an interactive map of academic research in the field of information visualization. It allows you to explore about 45,000 papers from major conferences (like IEEE VIS, CHI, EuroVis) by the semantic similarity of their ideas as revealed through their titles and abstracts.</p>
   <p>This project is inspired by Friso van Dijk, Marco Spruit, Chaïm van Toledo, and Matthieu Brinkhuis and their paper:</p>
   <p><a href="https://www.frisovandijk.com/research/pillars-of-privacy.pdf" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">"Pillars of Privacy: Identifying Core Theory in a Network Analysis of Privacy Literature" (2021)</a></p>
   <br/>
