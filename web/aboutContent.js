@@ -26,7 +26,7 @@ export const aboutContent = `
   <br/>
 
   <h4><strong>How is the data processed?</strong></h4>
-  <p>Data was collected from OpenAlex, which catalogs scientific papers and information about them such as their title, year published, authors, and so on. Data was cleaned by removing unnecessary columns and renaming required columns.</p>
+  <p>Data was collected from OpenAlex on November 17, 2025. OpenAlex catalogs scientific papers and their information such as their title, year published, authors, and so on. Data was cleaned by removing unnecessary columns and renaming required columns.</p>
   <br/>
 
   <h4><strong>How are the texts converted for analysis?</strong></h4>
