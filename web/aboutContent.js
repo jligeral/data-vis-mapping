@@ -2,7 +2,6 @@ export const aboutContent = `
 <h1><em>Visualization</em> Visualization</h1>
 <br/>
 <h2>About Us</h2>
-  <h3>We are "Blocked Behind A Pillar"</h3>
   <div style=\"display: flex; justify-content: space-around;\">
     <div>
       <h4>James Ligeralde</h4>
@@ -39,4 +38,8 @@ export const aboutContent = `
 
   <h4><strong>What is the -1 cluster?</strong></h4>
   <p>The -1 cluster represents noise or outliers in the data that do not fit well into any of the identified clusters. These papers may cover unique topics or have less common themes compared to the main clusters.</p>
+  <br/>
+
+  <h4><strong>How do I navigate the visualization?</strong></h4>
+  <p>You can click on any sphere to see details about a paper and other papers in its cluster. You can rotate the view by clicking and dragging your mouse. Use the scroll wheel to zoom in and out. Dragging allows you to explore different parts of the galaxy. The slider at the bottom lets you animate the visualization over publication years, helping you see how research trends evolve over time.</p>
 `;

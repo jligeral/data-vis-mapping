@@ -118,20 +118,19 @@ function init() {
   outlierButton.addEventListener("click", toggleOutlierButton);
   infoResetButton.addEventListener('click', toggleInfoResetButton);
 
-  // Update the "i" button to use the letter "i" instead of the emoji and ensure it is on top of the panel
   const infoButton = document.getElementById('infoResetButton');
-  infoButton.textContent = 'i'; // Use the letter "i"
-  infoButton.style.backgroundColor = '#fff'; // White circle
-  infoButton.style.color = '#808080'; // Grey "i"
+  infoButton.textContent = 'i';
+  infoButton.style.backgroundColor = '#fff';
+  infoButton.style.color = '#808080';
   infoButton.style.cursor = 'pointer';
   infoButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.3)';
-  infoButton.style.zIndex = '1001'; // Ensure it is above the panel
+  infoButton.style.zIndex = '1001';
 
   infoButton.addEventListener('click', () => {
     const isPanelOpen = infoPanelOverlay.style.display === 'flex';
 
     if (isPanelOpen) {
-      infoPanelOverlay.style.transformOrigin = 'top right'; // Adjust origin for top-right animation
+      infoPanelOverlay.style.transformOrigin = 'top right';
       infoPanelOverlay.style.transform = 'scale(0)';
       infoPanelOverlay.style.opacity = '0';
       setTimeout(() => {
@@ -139,7 +138,7 @@ function init() {
       }, 300);
     } else {
       infoPanelOverlay.style.display = 'flex';
-      infoPanelOverlay.style.transformOrigin = 'top right'; // Adjust origin for top-right animation
+      infoPanelOverlay.style.transformOrigin = 'top right';
       setTimeout(() => {
         infoPanelOverlay.style.transform = 'scale(1)';
         infoPanelOverlay.style.opacity = '1';
