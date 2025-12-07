@@ -22,6 +22,7 @@ let instancedMesh;
 let topics = [];
 let clusters = [];
 let clusterColors = {};
+let highlightColors = {};
 let minYear;
 let maxYear;
 let currentYear;
@@ -30,9 +31,13 @@ let outliersVisible = true;
 let pointerDown = false;
 let startX = 0;
 let startY = 0;
+let maxCitations = 1;
+let glowSprite;
 
 // To store per-instance metadata for click handling
 const instanceIdToTopic = new Map();
+//Color for unfocused clusters
+const dimColor = new THREE.Color(0xffffff);
 
 init();
 loadData().then(start);
@@ -185,6 +190,14 @@ async function loadData() {
 
   topics = json;
 
+  maxCitations = topics.reduce((max, t) => {
+    const c = Number(t.cited_by_count) || 0;
+    return c > max ? c : max;
+  }, 1);
+
+  console.log('Max citations:', maxCitations);
+
+
   // Determine year bounds
   const years = topics
     .map(d => Number(d.publication_year))
@@ -216,17 +229,36 @@ async function loadData() {
     0xffe66b  // yellow
   ];
 
+  // Colors for highlighted instance
+  const highlightPalette = [
+    0xffe66b,  // yellow
+    0xff6b6b, // red
+    0xffe66b,  // yellow
+    0xff6b6b, // red
+    0xa0ff6b, // green
+    0xa0ff6b, // green
+    0xffe66b,  // yellow
+    0xff6b6b, // red
+  ];
+
   clusters.forEach((clusterId, index) => {
-    const color = palette[index % palette.length];
+    let color = palette[index % palette.length];
     clusterColors[clusterId] = new THREE.Color(color);
+
+    color = highlightPalette[index % highlightPalette.length];
+    highlightColors[clusterId] = new THREE.Color(color);
   });
 
   // Grey color for the -1 cluster
   clusterColors[-1] = new THREE.Color(0x888888)
+  // Color for highlighted -1 cluster instance
+  highlightColors[-1] = new THREE.Color(0xff6b6b);
 }
 
 function start() {
   createGalaxy();
+  createGlowSprite()
+  updateInstanceScales();
   animate();
 }
 
@@ -252,7 +284,13 @@ function createGalaxy() {
     const y = Number(topic.y) * scaleFactor;
     const z = Number(topic.z) * scaleFactor;
 
-    dummy.position.set(x, y, z);
+    const jitter = 0.7; // Adjust this value to modify separation of topics in space
+
+    dummy.position.set(
+      Number(topic.x) * scaleFactor + (Math.random() - 0.5) * jitter,
+      Number(topic.y) * scaleFactor + (Math.random() - 0.5) * jitter,
+      Number(topic.z) * scaleFactor + (Math.random() - 0.5) * jitter
+    );
 
     // scale small by default; we’ll fade in by year in update
     dummy.scale.setScalar(0.35);
@@ -322,39 +360,89 @@ function onPointerClick(event) {
     if (instanceId !== undefined && instanceIdToTopic.has(instanceId)) {
       const topic = instanceIdToTopic.get(instanceId);
 
-      // Replace highliting instance on highlighting cluster, later can figure out how to use it
-      // highlightInstance(instanceId);
       updatePublicationList(instanceId)
       highlightCluster(instanceId);
+      highlightInstance(instanceId);
       showInfo(topic);
     }
   }
 }
 
+function createGlowTexture() {
+  const size = 256; // texture resolution
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  const gradient = ctx.createRadialGradient(
+      size/2, size/2, 0, 
+      size/2, size/2, size/2
+  );
+  gradient.addColorStop(0, 'rgba(255, 255, 0, 0.4)');
+  gradient.addColorStop(0.5, 'rgba(255, 255, 0, 0.15)');
+  gradient.addColorStop(1, 'rgba(255,255,0,0)');
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+function createGlowSprite() {
+  const texture = createGlowTexture();
+  const spriteMaterial = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      blending: THREE.AdditiveBlending
+  });
+
+  spriteMaterial.depthTest = false;
+  
+  glowSprite = new THREE.Sprite(spriteMaterial);
+  glowSprite.scale.set(0, 0, 0);
+  scene.add(glowSprite);
+}
+
 let highlightedInstance = null;
 
 function highlightInstance(instanceId) {
-  const dummy = new THREE.Object3D();
+  const clusterId = topics[instanceId].cluster;
+  const highlightColor = highlightColors[clusterId];
 
   if (highlightedInstance !== null && highlightedInstance !== instanceId) {
-    // reset previous highlight scale
-    const oldTopic = instanceIdToTopic.get(highlightedInstance);
-    setInstanceScaleByYear(highlightedInstance, oldTopic);
-  }
+    resetInstanceColor(instanceId) 
+  } 
 
-  highlightedInstance = instanceId;
+  instancedMesh.setColorAt(instanceId, highlightColor);
+  instancedMesh.instanceColor.needsUpdate = true;
 
+  const dummy = new THREE.Object3D();
   instancedMesh.getMatrixAt(instanceId, dummy.matrix);
   dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 
-  // bump the scale up and emissive glow
-  dummy.scale.multiplyScalar(1.8);
-  dummy.updateMatrix();
-  instancedMesh.setMatrixAt(instanceId, dummy.matrix);
-  instancedMesh.instanceMatrix.needsUpdate = true;
+  glowSprite.position.copy(dummy.position);
 
-  // update material emissive via vertex colors (approximate "glow")
-  // we could also temporarily tint its color brighter, but for simplicity just leave color as is.
+  const glowFactor = 1.5;
+  glowSprite.scale.set(
+    dummy.scale.x * glowFactor,
+    dummy.scale.y * glowFactor,
+    dummy.scale.z * glowFactor
+  );
+
+  highlightedInstance = instanceId; 
+}
+  
+function resetInstanceColor(instanceId) {
+  const currentClusterId = topics[instanceId].cluster;
+  const previousClusterId = topics[highlightedInstance].cluster; 
+  if (currentClusterId === previousClusterId) {
+    instancedMesh.setColorAt(highlightedInstance, clusterColors[currentClusterId]); 
+  } else { 
+    instancedMesh.setColorAt(highlightedInstance, dimColor); 
+  } 
+
+  glowSprite.scale.set(0, 0, 0);
 }
 
 function resetClusterHighlight() {
@@ -366,8 +454,6 @@ function resetClusterHighlight() {
 }
 
 function highlightCluster(instanceId) {
-  //Color for unfocused clusters
-  const dimColor = new THREE.Color(0xffffff);
   const clusterId = topics[instanceId].cluster;
 
   for (let i = 0; i < topics.length; i++) {
@@ -458,14 +544,33 @@ function updateInstanceScales() {
 
 function setInstanceScaleByYear(index, topic, dummyObj) {
   const year = Number(topic.publication_year);
-  const visible = !Number.isNaN(year) && year <= currentYear;
+  const hasYear = !Number.isNaN(year);
+  const visibleByYear =
+    hasYear &&
+    year >= minYear &&
+    year <= currentYear;
 
-  const baseScale = 0.35;
+  // Base min/max sphere sizes
   const minScale = 0.02;
+  const baseScale = 0.5;
 
-  const t = visible ? 1.0 : 0.0;
-  const s = minScale + t * (baseScale - minScale);
+  // Citation-based factor: squashed with log so it doesn’t explode
+  const rawCites = Math.max(0, Number(topic.cited_by_count) || 0);
+  const logCites = Math.log10(rawCites + 1);
+  const logMax = Math.log10(maxCitations + 1);
 
+// citationFactor in [0.5, 1.2] roughly
+  const citationFactor = 0.2 + 0.9 * (logCites / (logMax || 1));
+
+  // Combine visibility + citations
+  let s = visibleByYear ? baseScale * citationFactor : minScale;
+
+  // Optional: hide outliers when toggle is off
+  if (!outliersVisible && topic.cluster === -1) {
+    s = 0.00001;
+  }
+
+  // Apply to the instance
   if (dummyObj) {
     dummyObj.scale.setScalar(s);
   } else {
@@ -479,26 +584,32 @@ function setInstanceScaleByYear(index, topic, dummyObj) {
 }
 
 function updatePublicationList(instanceId) {
+  const previousClusterId = highlightedInstance !== null ? topics[highlightedInstance].cluster : -2; 
   const clusterId = topics[instanceId].cluster;
-  const pubs = topics.filter(t => t.cluster === clusterId);
+  if (clusterId !== previousClusterId) {
+    const pubs = topics.filter(t => t.cluster === clusterId);
 
-  list.innerHTML = `
-    <div><strong>Cluster: </strong><span style="opacity: 0.7;">${clusterId}</span></div>
-    <div><strong> Number of publications: </strong><span style="opacity: 0.7;">${pubs.length}</span></div>
-  `;
+    list.innerHTML = `
+      <div><strong>Cluster: </strong><span style="opacity: 0.7;">${clusterId}</span></div>
+      <div><strong> Number of publications: </strong><span style="opacity: 0.7;">${pubs.length}</span></div>
+    `;
 
-  pubs.forEach(pub => {
-    const item = document.createElement("p");
-    item.innerHTML = `<strong>${pub.title}</strong><br>
-    <span style="opacity: 0.7;">${parseInt(pub.publication_year) || 'Unknown'}</span>`;
+    pubs.forEach(pub => {
+      const item = document.createElement("p");
+      item.innerHTML = `<strong>${pub.title}</strong><br>
+      <span style="opacity: 0.7;">${parseInt(pub.publication_year) || 'Unknown'}</span>`;
 
-    item.style.cursor = "pointer";
-      item.addEventListener("click", () => {
-      showInfo(pub);
+    item.style.cursor = "pointer"; 
+    item.addEventListener("click", () => { 
+      const pubInstanceId = topics.indexOf(pub); 
+      if (pubInstanceId !== -1) { 
+        showInfo(pub); 
+        highlightInstance(pubInstanceId); 
+      } 
     });
-
-    list.appendChild(item);
-  });
+      list.appendChild(item);
+    });
+  }
 }
 
 function toggleInfoResetButton() {
