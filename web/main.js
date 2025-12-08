@@ -12,6 +12,8 @@ const resetColorButton = document.getElementById("resetColorsButton");
 const resetCameraButton = document.getElementById("resetCameraButton");
 const list = document.getElementById("publicationList");
 const infoResetButton = document.getElementById('infoResetButton');
+const muteBtn = document.getElementById("mute-btn");
+
 
 // Save initial info
 const initialInfo = infoPanel.innerHTML;
@@ -33,6 +35,21 @@ let startX = 0;
 let startY = 0;
 let maxCitations = 1;
 let glowSprite;
+const sounds = [];
+let zoomSound, ambientBg;
+let audioMuted = true;
+
+const AMBIENT_VOL = 0.3;  // background music volume
+const ZOOM_VOL = 0.7;     // zoom sound volume
+
+let listener;
+let zoomStopTimeout = null;
+let zoomFadeInterval = null;
+let prevCamPos = new THREE.Vector3();
+let prevTarget = new THREE.Vector3();
+
+const MOTION_EPSILON = 0.02;  // Adjust for sensitivity
+
 
 // To store per-instance metadata for click handling
 const instanceIdToTopic = new Map();
@@ -68,6 +85,66 @@ function init() {
 
   controls.target.set(105, 110, -11);
   controls.update();
+
+  prevCamPos.copy(camera.position);
+  prevTarget.copy(controls.target);
+
+  controls.addEventListener("change", () => {
+    if (audioMuted) return;
+    // Measure how much the camera and target changed this frame
+    const camDelta = camera.position.distanceTo(prevCamPos);
+    const targetDelta = controls.target.distanceTo(prevTarget);
+    const motionAmount = camDelta + targetDelta;
+
+    // Update previous values for next frame
+    prevCamPos.copy(camera.position);
+    prevTarget.copy(controls.target);
+
+    if (motionAmount < MOTION_EPSILON) {
+      return;
+    }
+
+    startZoomSound();
+
+    if (zoomStopTimeout) {
+      clearTimeout(zoomStopTimeout);
+    }
+    zoomStopTimeout = setTimeout(() => {
+      stopZoomSound();
+    }, 20); // delay before fade-out starts; tweak if needed
+  });
+
+
+
+  // Audio
+  listener = new THREE.AudioListener();
+  camera.add(listener);
+
+  const manager = new THREE.LoadingManager();
+  manager.onLoad = () => console.log("All audio loaded:", sounds);
+  const audioLoader = new THREE.AudioLoader(manager);
+
+  const audioFiles = [
+    { name: "space", file: "space.mp3" },             // ambient loop
+    { name: "spaceflight", file: "spaceflight.wav" }  // zoom sound
+  ];
+
+  audioFiles.forEach(({ name, file }) => {
+    const sound = new THREE.Audio(listener);
+    sound.name = name;
+
+    if (name === "space") ambientBg = sound;
+    if (name === "spaceflight") zoomSound = sound;
+
+    sounds.push(sound);
+
+    audioLoader.load(`./audio/${file}`, (buffer) => {
+      sound.setBuffer(buffer);
+      sound.setVolume(name === "space" ? AMBIENT_VOL : ZOOM_VOL);
+      sound.setLoop(true);
+      console.log(`${name} loaded`);
+    });
+  });
 
   // Lighting
   const ambient = new THREE.AmbientLight(0xffffff, 0.7);
@@ -178,6 +255,15 @@ function init() {
   infoContent.style.textAlign = 'center';
   infoContent.innerHTML = aboutContent;
   infoPanelOverlay.appendChild(infoContent);
+
+  const muteBtn = document.getElementById("mute-btn");
+  muteBtn.textContent = "🔇";
+
+  muteBtn.addEventListener("click", () => {
+    const nextState = !audioMuted;
+    setMuteState(nextState);
+    muteBtn.textContent = nextState ? "🔇" : "🔊";
+  });
 }
 
 async function loadData() {
@@ -633,4 +719,83 @@ function animate(time) {
 
   controls.update();
   renderer.render(scene, camera);
+}
+
+function startZoomSound() {
+  if (audioMuted) return;
+  if (!zoomSound || !zoomSound.buffer) return;
+
+  if (!zoomSound.isPlaying) {
+    zoomSound.setVolume(0);
+    zoomSound.play();
+    fadeVolume(zoomSound, 0, ZOOM_VOL, 120);
+  } else {
+    fadeVolume(zoomSound, zoomSound.getVolume(), ZOOM_VOL, 80);
+  }
+}
+
+function stopZoomSound() {
+  if (!zoomSound || !zoomSound.isPlaying) return;
+  fadeVolume(zoomSound, zoomSound.getVolume(), 0, 100, () => {
+    zoomSound.stop();
+  });
+}
+
+function fadeVolume(audio, from, to, duration, done) {
+  if (!audio) return;
+
+  if (zoomFadeInterval) {
+    clearInterval(zoomFadeInterval);
+    zoomFadeInterval = null;
+  }
+
+  const steps = 12;
+  const stepTime = duration / steps;
+  let current = 0;
+  const diff = to - from;
+
+  zoomFadeInterval = setInterval(() => {
+    current++;
+    const v = from + diff * (current / steps);
+    audio.setVolume(Math.max(0, Math.min(1, v)));
+
+    if (current >= steps) {
+      clearInterval(zoomFadeInterval);
+      zoomFadeInterval = null;
+      if (done) done();
+    }
+  }, stepTime);
+}
+
+function setMuteState(isMuted) {
+  audioMuted = isMuted;
+
+  // Ambient background
+  if (ambientBg && ambientBg.buffer) {
+    if (audioMuted) {
+      // Either just drop volume, or fade and stop
+      ambientBg.setVolume(0);
+      // If you want it completely stopped, uncomment:
+      // if (ambientBg.isPlaying) ambientBg.stop();
+    } else {
+      // Unmuted: make sure it's playing at normal volume
+      if (!ambientBg.isPlaying) {
+        ambientBg.setVolume(AMBIENT_VOL);
+        ambientBg.play();
+      } else {
+        ambientBg.setVolume(AMBIENT_VOL);
+      }
+    }
+  }
+
+  // Zoom/movement sound: keep volume 0 when muted
+  if (zoomSound && zoomSound.buffer) {
+    if (audioMuted) {
+      zoomSound.setVolume(0);
+    } else {
+      // don't force-play here; movement logic decides when to raise volume
+      // just restore its "normal" level
+      zoomSound.setVolume(ZOOM_VOL);
+    }
+  }
 }

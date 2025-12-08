@@ -184,6 +184,31 @@
     #infoResetButton:hover {
       background: rgba(255, 255, 255, 0.4);
     }
+
+    .sound-button {
+      position: absolute;
+      top: 0.5rem;
+      right: 3.3rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      z-index: 1001;
+    }
+
+    /* Hover glow */
+    .sound-button:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+
   </style>
   <script type="importmap">
 {
@@ -197,6 +222,10 @@
 <body>
   <div id="container">
     <button id="infoResetButton">i</button>
+    <button id="mute-btn" class="sound-button" title="Toggle sound">
+      🔇
+    </button>
+
 
     <div id="infoPanel" class="empty">
       <h2>Click a topic to inspect</h2>
