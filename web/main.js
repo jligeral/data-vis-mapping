@@ -40,7 +40,7 @@ let zoomSound, ambientBg;
 let audioMuted = true;
 
 const AMBIENT_VOL = 0.3;  // background music volume
-const ZOOM_VOL = 0.7;     // zoom sound volume
+const ZOOM_VOL = 0.5;     // zoom sound volume
 
 let listener;
 let zoomStopTimeout = null;
