@@ -114,8 +114,6 @@ function init() {
     }, 20); // delay before fade-out starts; tweak if needed
   });
 
-
-
   // Audio
   listener = new THREE.AudioListener();
   camera.add(listener);
@@ -773,12 +771,8 @@ function setMuteState(isMuted) {
   // Ambient background
   if (ambientBg && ambientBg.buffer) {
     if (audioMuted) {
-      // Either just drop volume, or fade and stop
       ambientBg.setVolume(0);
-      // If you want it completely stopped, uncomment:
-      // if (ambientBg.isPlaying) ambientBg.stop();
     } else {
-      // Unmuted: make sure it's playing at normal volume
       if (!ambientBg.isPlaying) {
         ambientBg.setVolume(AMBIENT_VOL);
         ambientBg.play();
@@ -788,13 +782,10 @@ function setMuteState(isMuted) {
     }
   }
 
-  // Zoom/movement sound: keep volume 0 when muted
   if (zoomSound && zoomSound.buffer) {
     if (audioMuted) {
       zoomSound.setVolume(0);
     } else {
-      // don't force-play here; movement logic decides when to raise volume
-      // just restore its "normal" level
       zoomSound.setVolume(ZOOM_VOL);
     }
   }
