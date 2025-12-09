@@ -13,6 +13,7 @@ const resetCameraButton = document.getElementById("resetCameraButton");
 const list = document.getElementById("publicationList");
 const infoResetButton = document.getElementById('infoResetButton');
 const muteBtn = document.getElementById("mute-btn");
+const publicationCounter = document.getElementById("publicationCounter");
 
 
 // Save initial info
@@ -343,6 +344,7 @@ function start() {
   createGalaxy();
   createGlowSprite()
   updateInstanceScales();
+  updatePublicationCount();
   animate();
 }
 
@@ -574,6 +576,7 @@ function onYearSliderChange(e) {
   currentYear = Number(e.target.value);
   yearLabel.textContent = currentYear;
   updateInstanceScales();
+  updatePublicationCount();
 }
 
 function togglePlay() {
@@ -606,6 +609,7 @@ function toggleOutlierButton() {
 
   instancedMesh.instanceMatrix.needsUpdate = true;
   outlierButton.classList.toggle("active", !outliersVisible);
+  updatePublicationCount();
 };
 
 function updateInstanceScales() {
@@ -699,6 +703,26 @@ function updatePublicationList(instanceId) {
 function toggleInfoResetButton() {
   infoPanel.classList.add('empty');
   infoPanel.innerHTML = initialInfo;
+}
+
+function updatePublicationCount() {
+  let visibleCount = 0;
+
+  for (const t of topics) {
+    const year = Number(t.publication_year);
+
+    // Filter: year slider
+    const inYear = year <= currentYear;
+
+    // Filter: outliers (cluster -1)
+    const inOutliers = outliersVisible || t.cluster !== -1;
+
+    if (inYear && inOutliers) {
+      visibleCount++;
+    }
+  }
+
+  publicationCounter.textContent = `Publications: ${visibleCount}`;
 }
 
 function animate(time) {

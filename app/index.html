@@ -214,6 +214,21 @@
       background: rgba(255, 255, 255, 0.4);
     }
 
+    #publicationCounter {
+      position: absolute;
+      bottom: 1.5rem; /* Adjusted to be at the absolute bottom left */
+      left: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+      backdrop-filter: blur(6px);
+      font-size: 0.8rem;
+      pointer-events: auto;
+      color: #eee;
+    }
+
   </style>
   <script type="importmap">
 {
@@ -230,7 +245,6 @@
     <button id="mute-btn" class="sound-button" title="Toggle sound">
       🔇
     </button>
-
 
     <div id="infoPanel" class="empty">
       <h2>Click a topic to inspect</h2>
@@ -249,6 +263,8 @@
       <button id="resetColorsButton">Reset colors</button>
       <button id="outlierButton">Remove outliers</button>
     </div>
+
+    <div id="publicationCounter">Publications: 0</div>
 
     <div id="publicationList"></div>
   </div>
