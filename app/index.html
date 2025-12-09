@@ -98,7 +98,7 @@
       background: #3b3b48;
     }
     #filters {
-      width: 170px;
+      width: 120px;
       position: absolute;
       top: 1rem;
       left: 1rem;
@@ -219,7 +219,7 @@
     }
     
     #yearRangeSlider {
-      margin: 10px 0;
+      margin: 10px 17px;
     }
 
     .noUi-target {
@@ -260,8 +260,18 @@
       text-align: center;
     }
 
-    #filterByYearButton {
+    #filterByYearLabel {
       flex-grow: 1;
+    }
+
+    #filterByYearContainer {
+      padding: 0.6rem;
+      width: 220px;
+      border-radius: 10px;
+      border: 1px solid rgba(160, 160, 255, 0.2);
+      background: rgba(5, 5, 20, 0.6);
+      box-shadow: 0 0 10px rgba(80, 80, 160, 0.25);
+      margin-top: 0.5rem;
     }
   </style>
   <script type="importmap">
@@ -297,15 +307,16 @@
       <button id="resetCameraButton">Reset camera</button>
       <button id="resetColorsButton">Reset colors</button>
       <button id="outlierButton">Remove outliers</button>
-      
-      <div id="filter-row">
-        <button id="filterByYearButton">Filter by year</button>
-        <button id="resetFilterButton">↺</button>
-      </div>
-      <div id="yearRangeSlider"></div>
-      <div id="sliderLabelContainer">
-        <span id="yearFromLabel"></span> 
-        <span id="yearToLabel"></span>
+      <div id="filterByYearContainer">
+        <div id="filter-row">
+          <Label id="filterByYearLabel">Filter by year</Label>
+          <button id="resetFilterButton">↺</button>
+        </div>
+        <div id="yearRangeSlider"></div>
+        <div id="sliderLabelContainer">
+          <span id="yearFromLabel"></span> 
+          <span id="yearToLabel"></span>
+        </div>
       </div>
     </div>
 

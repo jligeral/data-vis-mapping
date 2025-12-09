@@ -11,9 +11,7 @@ const outlierButton = document.getElementById("outlierButton");
 const resetColorButton = document.getElementById("resetColorsButton");
 const resetCameraButton = document.getElementById("resetCameraButton");
 const list = document.getElementById("publicationList");
-const infoResetButton = document.getElementById('infoResetButton');
 const muteBtn = document.getElementById("mute-btn");
-const yearFilterBtn = document.getElementById('filterByYearButton');
 const yearFromLabel = document.getElementById('yearFromLabel');
 const yearToLabel = document.getElementById('yearToLabel');
 const resetFilterButton = document.getElementById('resetFilterButton')
@@ -201,8 +199,6 @@ function init() {
   resetCameraButton.addEventListener('click', toggleResetCamera);
   resetColorButton.addEventListener('click', toggleResetColorButton);
   outlierButton.addEventListener("click", toggleOutlierButton);
-  infoResetButton.addEventListener('click', toggleInfoResetButton);
-  yearFilterBtn.addEventListener('click', toggleFilterByYearButton);
   resetFilterButton.addEventListener('click', toggleResetFilterButton);
 
   const infoButton = document.getElementById('infoResetButton');
@@ -327,6 +323,12 @@ async function loadData() {
     yearToLabel.textContent = values[1];
   });
 
+  yearRangeSlider.noUiSlider.on('change', (values) => {
+    const from = Number(values[0]);
+    const to = Number(values[1]);
+
+    filterByYearRange(from, to);
+  });
 
   // Collect cluster ids
   clusters = Array.from(new Set(topics.map(d => d.cluster))).sort((a, b) => a - b);
@@ -648,15 +650,17 @@ function toggleOutlierButton() {
 
   instancedMesh.instanceMatrix.needsUpdate = true;
 
+  // If highlighted instance in cluster -1
+  if (highlightedInstance && topics[highlightedInstance].cluster === -1) {
+      glowSprite.scale.set(0,0,0);
+      instancedMesh.setColorAt(highlightedInstance, dimColor);
+      instancedMesh.instanceColor.needsUpdate = true;
+      highlightedInstance = null;
+      infoPanel.classList.add('empty');
+      infoPanel.innerHTML = initialInfo;
+  }
+
   outlierButton.classList.toggle("active", !outliersVisible);
-};
-
-function toggleFilterByYearButton() {
-    const values = yearRangeSlider.noUiSlider.get();
-    const from = Number(values[0]);
-    const to = Number(values[1]);
-
-    filterByYearRange(from, to);
 };
 
 function filterByYearRange(from, to) {
@@ -683,6 +687,20 @@ function filterByYearRange(from, to) {
   });
 
   instancedMesh.instanceMatrix.needsUpdate = true;
+
+  // If highlighted instance not in filter range
+  if (highlightedInstance) {
+    const year = Number(topics[highlightedInstance].publication_year)
+    if (year < from || year > to) {
+      glowSprite.scale.set(0,0,0);
+      instancedMesh.setColorAt(highlightedInstance, dimColor);
+      instancedMesh.instanceColor.needsUpdate = true;
+      resetInstanceColor(highlightedInstance);
+      highlightedInstance = null;
+      infoPanel.classList.add('empty');
+      infoPanel.innerHTML = initialInfo;
+    }
+  }
 
   updatePublicationList(null);
 }
@@ -835,11 +853,6 @@ function toggleResetFilterButton() {
   yearToLabel.textContent = maxYear;
   yearRangeSlider.noUiSlider.set([minYear, maxYear]);
   updatePublicationList(null);
-}
-
-function toggleInfoResetButton() {
-  infoPanel.classList.add('empty');
-  infoPanel.innerHTML = initialInfo;
 }
 
 function animate(time) {
