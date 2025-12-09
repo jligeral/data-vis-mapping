@@ -14,7 +14,10 @@ const list = document.getElementById("publicationList");
 const infoResetButton = document.getElementById('infoResetButton');
 const muteBtn = document.getElementById("mute-btn");
 const publicationCounter = document.getElementById("publicationCounter");
-
+const yearFilterBtn = document.getElementById('filterByYearButton');
+const yearFromLabel = document.getElementById('yearFromLabel');
+const yearToLabel = document.getElementById('yearToLabel');
+const resetFilterButton = document.getElementById('resetFilterButton')
 
 // Save initial info
 const initialInfo = infoPanel.innerHTML;
@@ -39,6 +42,8 @@ let glowSprite;
 const sounds = [];
 let zoomSound, ambientBg;
 let audioMuted = true;
+let yearRangeSlider;
+let activeClusterId = null;
 
 const AMBIENT_VOL = 0.3;  // background music volume
 const ZOOM_VOL = 0.5;     // zoom sound volume
@@ -198,6 +203,8 @@ function init() {
   resetColorButton.addEventListener('click', toggleResetColorButton);
   outlierButton.addEventListener("click", toggleOutlierButton);
   infoResetButton.addEventListener('click', toggleInfoResetButton);
+  yearFilterBtn.addEventListener('click', toggleFilterByYearButton);
+  resetFilterButton.addEventListener('click', toggleResetFilterButton);
 
   const infoButton = document.getElementById('infoResetButton');
   infoButton.textContent = 'i';
@@ -298,6 +305,29 @@ async function loadData() {
   yearSlider.max = String(maxYear);
   yearSlider.value = String(currentYear);
   yearLabel.textContent = currentYear;
+
+  // Filter slider
+  yearRangeSlider = document.getElementById('yearRangeSlider');
+
+  noUiSlider.create(yearRangeSlider, {
+    start: [minYear, maxYear],           
+    connect: true,
+    range: {
+      min: minYear,
+      max: maxYear
+    },
+    step: 1,
+    format: { 
+      to: v => Math.round(v),
+      from: v => Number(v)
+    }
+  });
+
+  yearRangeSlider.noUiSlider.on('update', (values) => {
+    yearFromLabel.textContent = values[0];
+    yearToLabel.textContent = values[1];
+  });
+
 
   // Collect cluster ids
   clusters = Array.from(new Set(topics.map(d => d.cluster))).sort((a, b) => a - b);
@@ -595,22 +625,71 @@ function toggleResetColorButton() {
 
 function toggleOutlierButton() {
   outliersVisible = !outliersVisible;
+  // Get filter settings
+  const values = yearRangeSlider.noUiSlider.get();
+  const from = Number(values[0]);
+  const to = Number(values[1]);
+
   const dummy = new THREE.Object3D();
 
   topics.forEach((topic, index) => {
     if (topic.cluster === -1) {
+      const year = Number(topic.publication_year);
       instancedMesh.getMatrixAt(index, dummy.matrix);
       dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-      dummy.scale.setScalar(outliersVisible ? 0.35 : 0.00001);
+      const withinRange = year >= from && year <= to;
+      setInstanceScaleByYear(index, topic, dummy);
+
+      if (!withinRange) {
+        dummy.scale.setScalar(0.00001);
+      }
+
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(index, dummy.matrix);
     }
   });
 
   instancedMesh.instanceMatrix.needsUpdate = true;
+
   outlierButton.classList.toggle("active", !outliersVisible);
   updatePublicationCount();
 };
+
+function toggleFilterByYearButton() {
+    const values = yearRangeSlider.noUiSlider.get();
+    const from = Number(values[0]);
+    const to = Number(values[1]);
+
+    filterByYearRange(from, to);
+};
+
+function filterByYearRange(from, to) {
+  // Next 3 rows for the correct filteration if we used animation before
+  currentYear = to;
+  yearLabel.textContent = Math.round(currentYear);
+  yearSlider.value = String(currentYear);
+
+  const dummy = new THREE.Object3D();
+
+  topics.forEach((topic, index) => {
+    const year = Number(topic.publication_year);
+    instancedMesh.getMatrixAt(index, dummy.matrix);
+    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+    const withinRange = year >= from && year <= to;
+    setInstanceScaleByYear(index, topic, dummy);
+
+    if (!withinRange) {
+      dummy.scale.setScalar(0.00001);
+    }
+
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(index, dummy.matrix);
+  });
+
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  updatePublicationList(null);
+}
 
 function updateInstanceScales() {
   if (!instancedMesh) return;
@@ -671,21 +750,58 @@ function setInstanceScaleByYear(index, topic, dummyObj) {
   }
 }
 
-function updatePublicationList(instanceId) {
-  const previousClusterId = highlightedInstance !== null ? topics[highlightedInstance].cluster : -2; 
-  const clusterId = topics[instanceId].cluster;
-  if (clusterId !== previousClusterId) {
-    const pubs = topics.filter(t => t.cluster === clusterId);
+//The update can be called withoud indicating an instanceId
+function updatePublicationList(instanceId = null) {
+  if (instanceId !== null) {
+    const topic = instanceIdToTopic.get(instanceId);
+    if (topic) {
+      activeClusterId = topic.cluster;
+    }
+  } 
 
-    list.innerHTML = `
-      <div><strong>Cluster: </strong><span style="opacity: 0.7;">${clusterId}</span></div>
-      <div><strong> Number of publications: </strong><span style="opacity: 0.7;">${pubs.length}</span></div>
+  const values = yearRangeSlider.noUiSlider.get();
+  const fromYear = Number(values[0]);
+  const toYear = Number(values[1]);
+  
+  let filteredPubs = topics;
+
+  // Apply cluster filter
+  if (activeClusterId !== null) {
+    filteredPubs = topics.filter(t => t.cluster === activeClusterId);
+  }
+  
+  // Apply year filter
+  const rangeFilteredPubs = filteredPubs.filter(t => {
+    const year = Number(t.publication_year);
+    return year >= fromYear && year <= toYear;
+  });
+
+  let headerHTML = '';
+
+  if (activeClusterId !== null) {
+    headerHTML = `
+      <div><strong>Cluster: </strong><span style="opacity: 0.7;">${activeClusterId}</span></div>
+      <div><strong> Number of publications in cluster (${fromYear}-${toYear}): </strong><span style="opacity: 0.7;">${rangeFilteredPubs.length}</span></div>
+      <hr style="border-top: 1px solid #444; margin: 5px 0;">
     `;
+  } else {
+    headerHTML = `
+      <div><strong>Total Publications: </strong><span style="opacity: 0.7;">${topics.length}</span></div>
+      <div><strong>Filtered by Year (${fromYear}-${toYear}): </strong><span style="opacity: 0.7;">${rangeFilteredPubs.length}</span></div>
+      <hr style="border-top: 1px solid #444; margin: 5px 0;">
+    `;
+  }
+  
+  list.innerHTML = '';
+  
+  const headerDiv = document.createElement('div');
+  headerDiv.innerHTML = headerHTML;
+  list.prepend(headerDiv);
 
-    pubs.forEach(pub => {
-      const item = document.createElement("p");
-      item.innerHTML = `<strong>${pub.title}</strong><br>
-      <span style="opacity: 0.7;">${parseInt(pub.publication_year) || 'Unknown'}</span>`;
+  rangeFilteredPubs.forEach(pub => {
+    const item = document.createElement("p");
+    item.innerHTML = `<strong>${pub.title}</strong><br>
+    <span style="opacity: 0.7;">${parseInt(pub.publication_year) || 'Unknown'}</span>`;
 
     item.style.cursor = "pointer"; 
     item.addEventListener("click", () => { 
@@ -695,9 +811,34 @@ function updatePublicationList(instanceId) {
         highlightInstance(pubInstanceId); 
       } 
     });
-      list.appendChild(item);
-    });
-  }
+    list.appendChild(item);
+  });
+}
+
+function toggleResetFilterButton() {
+  // Next 3 rows for the correct refresh if we used animation before
+  currentYear = maxYear;
+  yearLabel.textContent = Math.round(currentYear);
+  yearSlider.value = String(currentYear);
+
+  const dummy = new THREE.Object3D();
+  
+  topics.forEach((topic, index) => {
+    instancedMesh.getMatrixAt(index, dummy.matrix);
+    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+    setInstanceScaleByYear(index, topic, dummy);
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(index, dummy.matrix);
+  });
+
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  activeClusterId = null; 
+  resetClusterHighlight();
+  yearFromLabel.textContent = minYear;
+  yearToLabel.textContent = maxYear;
+  yearRangeSlider.noUiSlider.set([minYear, maxYear]);
+  updatePublicationList(null);
 }
 
 function toggleInfoResetButton() {
