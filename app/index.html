@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Data Viz Galaxy</title>
   <link rel="icon" href="./favicon.ico" sizes="any" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -96,6 +98,7 @@
       background: #3b3b48;
     }
     #filters {
+      width: 170px;
       position: absolute;
       top: 1rem;
       left: 1rem;
@@ -116,6 +119,7 @@
 
     #filters button {
       padding: 0.45rem 0.8rem;
+      height: 30px;
       border-radius: 8px;
       border: none;
       cursor: pointer;
@@ -144,7 +148,7 @@
 
     #publicationList {
       position: absolute;
-      top: 10rem;
+      top: 16.5rem;
       left: 1rem;
       width: 280px;            
       max-height: 360px;  
@@ -213,7 +217,52 @@
     .sound-button:hover {
       background: rgba(255, 255, 255, 0.4);
     }
+    
+    #yearRangeSlider {
+      margin: 10px 0;
+    }
 
+    .noUi-target {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      border: 1px solid rgba(160, 160, 255, 0.15);
+      box-shadow: 0 0 10px rgba(100, 100, 255, 0.2);
+    }
+
+    .noUi-connect {
+      background: linear-gradient(90deg, #6bb8ff87, #3d0158);
+      box-shadow: 0 0 6px rgba(150, 150, 255, 0.6);
+    }
+
+    .noUi-handle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #241722;
+      box-shadow: 0 0 4px rgba(180, 180, 255, 0.8);
+      border: none;
+      cursor: pointer;
+    }
+
+    #sliderLabelContainer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.1rem;
+    }
+
+    #filter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #resetFilterButton {
+      text-align: center;
+    }
+
+    #filterByYearButton {
+      flex-grow: 1;
+    }
   </style>
   <script type="importmap">
 {
@@ -248,6 +297,16 @@
       <button id="resetCameraButton">Reset camera</button>
       <button id="resetColorsButton">Reset colors</button>
       <button id="outlierButton">Remove outliers</button>
+      
+      <div id="filter-row">
+        <button id="filterByYearButton">Filter by year</button>
+        <button id="resetFilterButton">↺</button>
+      </div>
+      <div id="yearRangeSlider"></div>
+      <div id="sliderLabelContainer">
+        <span id="yearFromLabel"></span> 
+        <span id="yearToLabel"></span>
+      </div>
     </div>
 
     <div id="publicationList"></div>
